@@ -1,0 +1,281 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0, minimum-scale=1.0, user-scalable=0, initial-scale=1.0, width=device-width" />
+    <meta name="format-detection" content="telephone=no, email=no, date=no, address=no">
+    <title>Hello APP</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css" />
+    <style>
+        .divier {
+            width: 100%;
+            height: 1px;
+            background: #ede9e9;
+            position: relative;
+            font-size: 12px;
+            color: #bebebe;
+            margin: 30px 0;
+        }
+
+        .divier>span {
+            position: absolute;
+            background: white;
+            box-sizing: border-box;
+            padding: 10px;
+            top: 0;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .inputBox {
+            margin-top: 20px;
+        }
+
+        .van-cell {
+            box-sizing: border-box;
+            padding: 15px;
+        }
+        /*apple登录*/
+
+        .apple>img {
+            width: 100%;
+        }
+        .wechatimg {
+    			text-align: center;
+    			/*display: flex;*/
+    			align-items: center;
+    			justify-content: space-around;
+    		}
+
+    		.wechatimg>img {
+    			width: 45px;
+    			height: 45px;
+    		}
+
+    		.wechatimg>.apple{
+    			width: 45vw;
+    			border-radius: 20px;
+    			border: 1px solid black;
+    			background: white;
+    			display: flex;
+    			align-items: center;
+    			justify-content: center;
+    			text-align: center;
+    			box-sizing: border-box;
+    			padding: 4px 0;
+    			margin: 0 auto;
+    			margin-bottom: 10px;
+    		}
+
+    		.wechatimg>.apple>img {
+    			width: 18px;
+    			height: 18px;
+    			margin-right: 3px;
+    		}
+
+    		.tips {
+    			box-sizing: border-box;
+    			padding: 20px 0;
+    			display: flex;
+    			justify-content: space-between;
+    			color: #bebebe;
+    			font-size: 12px;
+    		}
+    </style>
+</head>
+
+<body>
+  <div id="app">
+    <div v-if="isWx" class="divier"><span>第三方登录</span></div>
+    <div class="wechatimg">
+        <span class="apple" v-if="showapple" @click="applelogin()"><img src="../image/apple1.png" alt="apple">通过apple登录</span>
+        <img v-if="isWx" @click="wechatLogin()" src="../image/wechat.png" alt="wechat">
+    </div>
+  </div>
+</body>
+<script type="text/javascript" src="../script/api.js"></script>
+	<script type="text/javascript" src="../script/vue.min.js"></script>
+<script type="text/javascript">
+    apiready = function() {
+        app = new Vue({
+            el: "#app",
+            data() {
+                return {
+                    isWx: true,
+                    showapple: false, //是否展示apple登录
+                }
+            },
+            created() {
+                var _this = this;
+                var systype = api.systemType;
+                this.phonetype = systype
+                var sysversion = (api.systemVersion).split('.');
+                if (systype == 'ios' && sysversion[0] >= 13) {
+                    this.showapple = true
+                }
+                this.isShowWx()
+            },
+            methods: {
+                //判断微信
+                isShowWx: function() {
+                    var _this = this;
+                    var wx = api.require('wxPlus');
+                    wx.isInstalled(function(ret, err) {
+                        if (ret.installed) {
+                            _this.isWx = true
+                                // alert("当前设备已安装微信客户端");
+                        } else {
+                            _this.isWx = false
+                                // alert('当前设备未安装微信客户端');
+                        }
+                    });
+                },
+                //apple登录
+                applelogin() {
+                    var Apple = api.require('Apple');
+                    Apple.login(function(ret, err) {
+                        if (ret.status) {
+                            var parameter = {
+                                identityToken: ret.authInfo.identityToken,
+                                user: ret.authInfo.user,
+                            }
+                            api.alert({
+                                title: '登陆成功，后续逻辑自行处理',
+                                msg: 'testmsg',
+                            }, function(ret, err){
+
+                            });
+
+                            // 拿到apple的两个参数信息，去处理登陆的业务逻辑
+                        } else {
+                          //一下是平台提供的不同错误的状态吗
+                            if (err.code == 1000) {
+                                api.toast({
+                                    msg: '用户已经删除授权该app',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            } else if (err.code == 1001) {
+                                api.toast({
+                                    msg: '用户取消了授权请求',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            } else if (err.code == 1002) {
+                                api.toast({
+                                    msg: '授权请求无响应',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            } else if (err.code == 1004) {
+                                api.toast({
+                                    msg: '授权请求失败',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            } else {
+                                api.toast({
+                                    msg: '未知错误',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            }
+                        }
+                    });
+                },
+                //点击第三方微信登录
+                wechatLogin() {
+                    var _this = this;
+                    var wxPlus = api.require('wxPlus');
+                    wxPlus.isInstalled(function(ret, err) { //检测是否安装了微信
+                        if (ret.installed) { //如果安装了
+                            _this.getacctoken() //申请授权
+                        } else {
+                            api.toast({
+                                msg: '当前设备未安装微信客户端',
+                                duration: 2000,
+                                location: 'middle'
+                            });
+                        }
+                    });
+                },
+                //申请微信授权
+                getacctoken() {
+                    var _this = this;
+                    var wxPlus = api.require('wxPlus');
+                    wxPlus.auth({
+                        apiKey: ""
+                    }, function(result, err) {
+                        if (result.status) {
+                            //授权通过，去获取code值
+                            wxPlus.getToken({
+                                code: result.code
+                            }, function(resultgetToken, err) {
+                                if (resultgetToken.status) {
+                                    //获取wx头像，昵称
+                                    wxPlus.getUserInfo({
+                                        accessToken: resultgetToken.accessToken,
+                                        openId: resultgetToken.openId
+                                    }, function(retInfo, err) {
+                                        if (retInfo.status) {
+                                            requstPost(URLRouter.wxlogin, {
+                                                openid: retInfo.openid,
+                                                avatar: retInfo.headimgurl,
+                                                nickname: retInfo.nickname,
+                                                type: _this.phonetype
+                                            }, function success(loginresult) {
+                                              api.alert({
+                                                  title: '登陆成功，后续逻辑自行处理',
+                                                  msg: 'testmsg',
+                                              }, function(ret, err){
+
+                                              });
+                                                //处理请求成功的逻辑
+                                            }, function fail(err) {
+                                              // 处理失败的逻辑
+                                            })
+                                        }
+                                    });
+                                    api.hideProgress();
+                                }
+                            });
+                        } else {
+                          // 不同的code码对应不同的状态
+                            if (err.code == 0) {
+                                api.toast({
+                                    msg: '成功',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            } else if (err.code == -1) {
+                                api.toast({
+                                    msg: '未知错误',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            } else if (err.code == 1) {
+                                api.toast({
+                                    msg: '用户取消',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            } else if (err.code == 2) {
+                                api.toast({
+                                    msg: '用户拒绝',
+                                    duration: 2000,
+                                    location: 'middle'
+                                });
+                            }
+                        }
+                    });
+
+                },
+
+            }
+        })
+
+    };
+</script>
+
+</html>
